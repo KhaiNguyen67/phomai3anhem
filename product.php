@@ -2,7 +2,7 @@
 // ============================================================
 // File: product.php
 // Chức năng: Giao diện danh sách sản phẩm phía khách hàng (PDO)
-//            Tích hợp hiển thị nhãn Khuyến Mãi và giá ưu đãi trực quan
+//            Tích hợp kiểm tra tồn kho, hiển thị nhãn HẾT HÀNG trực quan
 // ============================================================
 include_once 'config/db.php';
 include_once 'includes/header.php';
@@ -14,7 +14,7 @@ $categories = $stmt_cate->fetchAll();
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $cate_id = isset($_GET['category']) ? (int)$_GET['category'] : 0;
 
-// Câu lệnh truy vấn chính (lấy thêm các trường sale_price, is_on_sale, is_featured)
+// Câu lệnh truy vấn chính (lấy thêm trường stock để kiểm tra số lượng tồn kho)
 $sql = "SELECT p.*, c.name AS category_name FROM products p JOIN categories c ON p.category_id = c.id WHERE p.is_active = 1";
 $params = [];
 if (!empty($search)) { $sql .= " AND p.name LIKE ?"; $params[] = "%$search%"; }
@@ -60,23 +60,33 @@ $products = $stmt_prod->fetchAll();
         <?php if (count($products) > 0): ?>
             <?php foreach($products as $prod): ?>
                 <div class="col-sm-6 col-md-4 col-lg-3" data-aos="fade-up">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden bg-white custom-product-card position-relative">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden bg-white custom-product-card position-relative <?php echo ($prod['stock'] <= 0) ? 'product-out-of-stock' : ''; ?>">
                         
-                        <?php if (isset($prod['is_on_sale']) && $prod['is_on_sale'] == 1): ?>
+                        <?php if ($prod['stock'] <= 0): ?>
+                            <span class="position-absolute top-0 start-0 m-3 badge bg-secondary px-2.5 py-1.5 small rounded-pill shadow-sm" style="z-index: 2;">
+                                <i class="bi bi-x-circle-fill me-1"></i>HẾT HÀNG
+                            </span>
+                        <?php elseif (isset($prod['is_on_sale']) && $prod['is_on_sale'] == 1): ?>
                             <span class="position-absolute top-0 start-0 m-3 badge bg-danger px-2.5 py-1.5 small rounded-pill shadow-sm animate-pulse" style="z-index: 2;">
                                 <i class="bi bi-tag-fill me-1"></i>KHUYẾN MÃI
                             </span>
-                        <?php elseif ($prod['is_featured'] == 1): ?>
+                        <?php elseif (isset($prod['is_featured']) && $prod['is_featured'] == 1): ?>
                             <span class="position-absolute top-0 start-0 m-3 badge bg-warning text-dark px-2.5 py-1.5 small rounded-pill shadow-sm" style="z-index: 2;">
                                 Bán chạy
                             </span>
                         <?php endif; ?>
 
-                        <div class="bg-light text-center p-3 d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <div class="bg-light text-center p-3 d-flex align-items-center justify-content-center position-relative" style="height: 200px;">
                             <a href="chitietsanpham.php?id=<?php echo $prod['id']; ?>" class="w-100 h-100 d-flex align-items-center justify-content-center img-container">
-                                <?php $img = (!empty($prod['image']) && file_exists('assets/img/'.$prod['image'])) ? 'assets/img/'.$prod['image'] : 'https://images.unsplash.com/photo-1528750994863-30f4a7c05267?q=80&w=400'; ?>
-                                <img src="<?php echo $img; ?>" class="img-fluid rounded-3" style="max-height: 160px; object-fit: contain;" alt="<?php echo htmlspecialchars($prod['name']); ?>">
+                                <?php 
+                                $img_file = isset($prod['image']) ? $prod['image'] : '';
+                                $img = (!empty($img_file) && file_exists('assets/img/'.$img_file)) ? 'assets/img/'.$img_file : 'https://images.unsplash.com/photo-1528750994863-30f4a7c05267?q=80&w=400'; 
+                                ?>
+                                <img src="<?php echo $img; ?>" class="img-fluid rounded-3 <?php echo ($prod['stock'] <= 0) ? 'opacity-50' : ''; ?>" style="max-height: 160px; object-fit: contain;" alt="<?php echo htmlspecialchars($prod['name']); ?>">
                             </a>
+                            <?php if ($prod['stock'] <= 0): ?>
+                                <div class="position-absolute absolute-center text-secondary fw-bold small bg-white bg-opacity-75 px-3 py-1 rounded shadow-sm">Tạm hết hàng</div>
+                            <?php endif; ?>
                         </div>
                         
                         <div class="card-body d-flex flex-column p-4">
@@ -94,8 +104,9 @@ $products = $stmt_prod->fetchAll();
                                 <?php echo htmlspecialchars($prod['short_desc']); ?>
                             </p>
                             
-                            <div class="mb-3">
+                            <div class="mb-3 d-flex justify-content-between align-items-center">
                                 <span class="badge bg-light text-dark border">Xuất xứ: <?php echo htmlspecialchars($prod['origin'] ?? 'Đang cập nhật'); ?></span>
+                                <small class="text-muted font-monospace" style="font-size: 0.8rem;">Kho: <?php echo $prod['stock']; ?></small>
                             </div>
                             
                             <div class="d-flex align-items-center justify-content-between pt-2 border-top">
@@ -108,13 +119,19 @@ $products = $stmt_prod->fetchAll();
                                     <?php endif; ?>
                                 </div>
                                 
-                                <form class="ajax-cart-form">
-                                    <input type="hidden" name="product_id" value="<?php echo $prod['id']; ?>">
-                                    <input type="hidden" name="quantity" value="1">
-                                    <button type="submit" class="btn btn-sm btn-gold p-2 lh-1 rounded-circle" title="Thêm vào giỏ hàng">
-                                        <i class="bi bi-cart-plus fs-5"></i>
+                                <?php if ($prod['stock'] > 0): ?>
+                                    <form class="ajax-cart-form">
+                                        <input type="hidden" name="product_id" value="<?php echo $prod['id']; ?>">
+                                        <input type="hidden" name="quantity" value="1">
+                                        <button type="submit" class="btn btn-sm btn-gold p-2 lh-1 rounded-circle" title="Thêm vào giỏ hàng">
+                                            <i class="bi bi-cart-plus fs-5"></i>
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <button type="button" class="btn btn-sm btn-secondary p-2 lh-1 rounded-circle" disabled title="Sản phẩm đã hết hàng">
+                                        <i class="bi bi-dash-circle fs-5"></i>
                                     </button>
-                                </form>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -131,44 +148,41 @@ $products = $stmt_prod->fetchAll();
 </div>
 
 <style>
-/* Thiết lập hiệu ứng mượt mà 3D chuyển động cho Card */
 .custom-product-card {
     transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.4s ease;
 }
-
-/* Hiệu ứng nâng nhẹ và đổ bóng chuẩn UI/UX khi di chuột */
 .custom-product-card:hover {
     transform: translateY(-8px);
     box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.12) !important;
 }
-
-/* Màu mặc định của liên kết tên sản phẩm */
+.product-out-of-stock {
+    opacity: 0.85;
+}
+.absolute-center {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+}
 .product-title a {
     color: #212529;
     transition: color 0.3s ease;
 }
-
-/* Tự động chuyển màu chữ tên sản phẩm sang tông Vàng Gold thương hiệu khi Hover Card */
 .custom-product-card:hover .product-title a {
     color: #E5A93B; 
 }
-
-/* Hiệu ứng Scale phóng to ảnh nhẹ nhàng */
 .img-container img {
     transition: transform 0.4s ease;
 }
-.custom-product-card:hover .img-container img {
+.custom-product-card:not(.product-out-of-stock):hover .img-container img {
     transform: scale(1.06);
 }
-
 .card-desc {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
-
-/* Hiệu ứng nhấp nháy tinh tế thu hút người mua chú ý vào nhãn Khuyến Mãi */
 @keyframes pulse {
     0% { opacity: 0.9; }
     50% { opacity: 1; transform: scale(1.03); }
@@ -180,11 +194,12 @@ $products = $stmt_prod->fetchAll();
 </style>
 
 <script>
-// Logic xử lý giỏ hàng bất đồng bộ bằng Fetch API
 document.querySelectorAll('.ajax-cart-form').forEach(form => {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         let formData = new FormData(this);
+        
+        // Gửi yêu cầu kiểm kho và thêm hàng ngầm
         fetch('cart.php?action=add', {
             method: 'POST',
             body: formData,
@@ -199,6 +214,9 @@ document.querySelectorAll('.ajax-cart-form').forEach(form => {
                     badge.classList.remove('d-none');
                 }
                 alert('Đã thêm phô mai vào giỏ hàng thành công!');
+            } else {
+                // Hiển thị chi tiết lý do từ chối (Ví dụ: "Sản phẩm này hiện tại đã hết hàng!")
+                alert(data.message);
             }
         })
         .catch(error => console.error('Lỗi hệ thống giỏ hàng:', error));

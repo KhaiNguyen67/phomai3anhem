@@ -2,7 +2,7 @@
 // ============================================================
 // File: index.php
 // Chức năng: Trang chủ tích hợp Banner 50vh, 3 Sản phẩm BÁN CHẠY THỰC TẾ (Dựa trên dữ liệu đơn hàng),
-//            3 Bài viết mới & Câu chuyện Glassmorphism thương hiệu.
+//            3 Bài viết MỚI NHẤT (Gần đây nhất), Câu chuyện Glassmorphism thương hiệu.
 // ============================================================
 include_once 'config/db.php';
 include_once 'includes/header.php';
@@ -21,9 +21,10 @@ $query_top_selling = "
 ";
 $featured_products = $pdo->query($query_top_selling)->fetchAll();
 
-// 2. Lấy ra tối đa 3 bài viết blog (Ưu tiên các bài viết nổi bật is_featured = 1 lên đầu trước)
+// 2. THAY ĐỔI: Lấy ra đúng 3 bài viết blog MỚI NHẤT (Sắp xếp theo ngày tạo giảm dần hoặc ID giảm dần)
 try {
-    $stmt_blog = $pdo->query("SELECT * FROM posts ORDER BY is_featured DESC, id DESC LIMIT 3");
+    // Sắp xếp theo ngày tạo (created_at) giảm dần để lấy các bài đăng gần đây nhất lên đầu
+    $stmt_blog = $pdo->query("SELECT * FROM posts ORDER BY created_at DESC, id DESC LIMIT 3");
     $latest_blogs = $stmt_blog->fetchAll();
 } catch (PDOException $e) {
     $latest_blogs = []; 
@@ -43,7 +44,7 @@ if (!file_exists($banner_path)) {
          style="background: linear-gradient(90deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.1) 100%); z-index: 1;">
     </div>
     
-    <div class="container position-relative text-white" style="z-index: 2;" data-aos="fade-right">
+    <div class="container position-right text-white" style="z-index: 2;" data-aos="fade-right">
         <div class="row">
             <div class="col-md-8 col-lg-6">
                 <span class="badge bg-warning text-dark text-uppercase fw-bold px-3 py-2 rounded-pill mb-3" 
@@ -128,7 +129,7 @@ if (!file_exists($banner_path)) {
     <div class="container my-4">
         <div class="text-center mb-5" data-aos="fade-up">
             <span class="text-warning text-uppercase fw-bold small" style="letter-spacing: 1.5px;">Góc Chia Sẻ</span>
-            <h2 class="fw-bold text-dark mt-1">Bài Viết Mới Từ Blog</h2>
+            <h2 class="fw-bold text-dark mt-1">Bài Viết Mới Nhất</h2>
             <div class="mx-auto bg-warning mt-2" style="width: 60px; height: 3px; border-radius: 2px;"></div>
         </div>
 
@@ -164,6 +165,10 @@ if (!file_exists($banner_path)) {
                         </div>
                     </div>
                 <?php endforeach; ?>
+            <?php else: ?>
+                <div class="col-12 text-center text-muted py-4">
+                    <p>Chưa có bài viết blog nào.</p>
+                </div>
             <?php endif; ?>
         </div>
     </div>
