@@ -1,13 +1,12 @@
 <?php
 // ============================================================
 // File: config/db.php
-// Chức năng: Kết nối CSDL MySQL bằng PDO (Đã sửa đổi Port 2333)
 // ============================================================
 
-$host = '127.0.0.1:3306';    // BẮT BUỘC: Thêm dấu hai chấm và số cổng 2333 vào đây
-$dbname = 'phomai3anhem';   // Tên database của bạn
-$username = 'root';         // Tên đăng nhập MySQL
-$password = '';             // Mật khẩu trống theo cấu hình hệ thống của bạn
+$host = '127.0.0.1:3306';    //  Thêm dấu hai chấm và số cổng (hiện tại là 3306) vào đây
+$dbname = 'phomai3anhem';   
+$username = 'root';         
+$password = '';             // Mật khẩu
 
 try {
     // Khởi tạo chuỗi kết nối PDO với thông số Host đã bao gồm Port 2333
