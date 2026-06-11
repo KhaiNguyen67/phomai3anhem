@@ -6,7 +6,7 @@
 $host = '127.0.0.1:3306';    //  Thêm dấu hai chấm và số cổng (hiện tại là 3306) vào đây
 $dbname = 'phomai3anhem';   
 $username = 'root';         
-$password = '';             // Mật khẩu
+$password = '';             
 
 try {
     // Khởi tạo chuỗi kết nối PDO với thông số Host đã bao gồm Port 2333
